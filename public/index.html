@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajedrez en Tiempo Real</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="container">
+    <h1>♟️ Ajedrez en Tiempo Real</h1>
+
+    <!-- Pantalla de inicio -->
+    <div id="lobby" class="screen active">
+        <div class="lobby-content">
+            <h2>Configurar Partida</h2>
+
+            <div class="time-presets">
+                <h3>Tiempos Predefinidos</h3>
+                <div class="preset-buttons">
+                    <button class="preset-btn" data-time="1" data-increment="0">1+0</button>
+                    <button class="preset-btn" data-time="3" data-increment="0">3+0</button>
+                    <button class="preset-btn" data-time="5" data-increment="0">5+0</button>
+                    <button class="preset-btn" data-time="10" data-increment="0">10+0</button>
+                    <button class="preset-btn" data-time="15" data-increment="10">15+10</button>
+                    <button class="preset-btn" data-time="30" data-increment="0">30+0</button>
+                </div>
+            </div>
+
+            <div class="custom-time">
+                <h3>Tiempo Personalizado</h3>
+                <div class="input-group">
+                    <label for="minutes">Minutos:</label>
+                    <input type="number" id="minutes" min="1" max="180" value="5">
+                </div>
+                <div class="input-group">
+                    <label for="increment">Incremento (seg):</label>
+                    <input type="number" id="increment" min="0" max="60" value="0">
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button id="createGameBtn" class="btn btn-primary">Crear Partida</button>
+            </div>
+
+            <div class="join-game">
+                <h3>O Únete a una Partida</h3>
+                <div class="input-group">
+                    <input type="text" id="gameIdInput" placeholder="Código de partida">
+                    <button id="joinGameBtn" class="btn btn-secondary">Unirse</button>
+                </div>
+            </div>
+
+            <div id="gameIdDisplay" class="game-id-display" style="display: none;">
+                <p>Código de partida:</p>
+                <div class="game-id-box">
+                    <span id="gameIdText"></span>
+                    <button id="copyGameId" class="btn-copy">📋 Copiar</button>
+                </div>
+                <p class="waiting-text">Esperando al oponente...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de juego -->
+    <div id="game" class="screen">
+        <div class="game-info">
+            <div class="player-info" id="topPlayer">
+                <div class="player-label">
+                    <span class="player-color">⚫</span>
+                    <span>Negras</span>
+                </div>
+                <div class="timer" id="blackTimer">5:00</div>
+            </div>
+        </div>
+
+        <div id="chessboard" class="chessboard"></div>
+
+        <div class="game-info">
+            <div class="player-info" id="bottomPlayer">
+                <div class="player-label">
+                    <span class="player-color">⚪</span>
+                    <span>Blancas</span>
+                </div>
+                <div class="timer" id="whiteTimer">5:00</div>
+            </div>
+        </div>
+
+        <div class="game-status">
+            <p id="turnIndicator">Turno de las blancas</p>
+        </div>
+
+        <button id="resignBtn" class="btn btn-danger">Rendirse</button>
+    </div>
+
+    <!-- Pantalla de fin de juego -->
+    <div id="gameOver" class="screen">
+        <div class="game-over-content">
+            <h2>¡Juego Terminado!</h2>
+            <p id="winnerText"></p>
+            <button id="newGameBtn" class="btn btn-primary">Nueva Partida</button>
+        </div>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/chess.js"></script>
+<script src="/js/board.js"></script>
+<script src="/js/timer.js"></script>
+</body>
+</html>

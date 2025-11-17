@@ -1,0 +1,394 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    width: 100%;
+}
+
+h1 {
+    text-align: center;
+    color: white;
+    margin-bottom: 30px;
+    font-size: 2.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.screen {
+    display: none;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+
+.screen.active {
+    display: block;
+}
+
+/* Lobby */
+.lobby-content {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.lobby-content h2 {
+    color: #333;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.lobby-content h3 {
+    color: #555;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.time-presets, .custom-time, .join-game {
+    margin-bottom: 30px;
+}
+
+.preset-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.preset-btn {
+    padding: 15px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.preset-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.preset-btn.selected {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.3);
+}
+
+.input-group {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.input-group label {
+    min-width: 140px;
+    font-weight: 600;
+    color: #555;
+}
+
+.input-group input {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.btn {
+    padding: 12px 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    flex: 1;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: #48bb78;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #38a169;
+}
+
+.btn-danger {
+    background: #f56565;
+    color: white;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.btn-danger:hover {
+    background: #e53e3e;
+}
+
+.game-id-display {
+    background: #f7fafc;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.game-id-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+#gameIdText {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+    letter-spacing: 2px;
+}
+
+.btn-copy {
+    padding: 8px 15px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.btn-copy:hover {
+    background: #5568d3;
+}
+
+.waiting-text {
+    color: #718096;
+    margin-top: 10px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Tablero de ajedrez */
+.chessboard {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0;
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 1;
+    margin: 20px auto;
+    border: 3px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
+.square {
+    aspect-ratio: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 3rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    user-select: none;
+}
+
+.square.light {
+    background-color: #f0d9b5;
+}
+
+.square.dark {
+    background-color: #b58863;
+}
+
+.square.selected {
+    background-color: #baca44 !important;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+}
+
+.square.valid-move {
+    position: relative;
+}
+
+.square.valid-move::after {
+    content: '';
+    position: absolute;
+    width: 30%;
+    height: 30%;
+    background-color: rgba(0,0,0,0.2);
+    border-radius: 50%;
+}
+
+.square.valid-move.has-piece::after {
+    width: 90%;
+    height: 90%;
+    background-color: transparent;
+    border: 4px solid rgba(0,0,0,0.3);
+    border-radius: 50%;
+}
+
+.square:hover {
+    filter: brightness(0.95);
+}
+
+/* Información del juego */
+.game-info {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.player-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f7fafc;
+    padding: 15px 25px;
+    border-radius: 10px;
+    min-width: 300px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.player-info.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    animation: glow 1.5s infinite;
+}
+
+@keyframes glow {
+    0%, 100% { box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); }
+    50% { box-shadow: 0 5px 20px rgba(102, 126, 234, 0.6); }
+}
+
+.player-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.player-color {
+    font-size: 1.5rem;
+}
+
+.timer {
+    font-size: 1.8rem;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    min-width: 100px;
+    text-align: right;
+}
+
+.timer.low-time {
+    color: #f56565;
+    animation: blink 0.5s infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.5; }
+}
+
+.game-status {
+    text-align: center;
+    margin: 20px 0;
+}
+
+#turnIndicator {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #555;
+}
+
+/* Game Over */
+.game-over-content {
+    text-align: center;
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.game-over-content h2 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 2rem;
+}
+
+#winnerText {
+    font-size: 1.3rem;
+    color: #555;
+    margin-bottom: 30px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    .chessboard {
+        max-width: 90vw;
+    }
+
+    .square {
+        font-size: 2rem;
+    }
+
+    .preset-buttons {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .player-info {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .timer {
+        font-size: 1.4rem;
+    }
+}

@@ -148,6 +148,8 @@ socket.on('moveMade', ({ board, from, to, currentTurn, whiteTime, blackTime, isC
 });
 
 socket.on('timeUpdate', ({ whiteTime, blackTime }) => {
+    gameState.whiteTime = whiteTime;
+    gameState.blackTime = blackTime;
     updateTimer('white', whiteTime);
     updateTimer('black', blackTime);
 });

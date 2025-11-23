@@ -18,13 +18,20 @@ class Game {
         this.board = this.initializeBoard();
         this.currentTurn = 'white';
         this.moveHistory = [];
-        this.timeControl = timeControl; // formato: { minutes, increment }
-        this.whiteTime = timeControl.minutes * 60 * 1000; // en milisegundos
+        this.timeControl = timeControl;
+        this.whiteTime = timeControl.minutes * 60 * 1000;
         this.blackTime = timeControl.minutes * 60 * 1000;
         this.lastMoveTime = null;
         this.timerInterval = null;
         this.gameOver = false;
         this.winner = null;
+        this.whiteKingMoved = false;
+        this.blackKingMoved = false;
+        this.whiteRookKingsideMoved = false;
+        this.whiteRookQueensideMoved = false;
+        this.blackRookKingsideMoved = false;
+        this.blackRookQueensideMoved = false;
+        this.lastMove = null; // Para captura al paso
     }
 
     initializeBoard() {
@@ -53,7 +60,7 @@ class Game {
         return player ? player.color : null;
     }
 
-    makeMove(from, to, socketId) {
+    makeMove(from, to, socketId, promotion = 'Q') {
         if (this.gameOver) return { success: false, reason: 'Game is over' };
 
         const playerColor = this.getPlayerColor(socketId);
@@ -71,21 +78,35 @@ class Game {
             return { success: false, reason: 'Not your piece' };
         }
 
-        // Validar movimiento básico (aquí se puede expandir con lógica completa de ajedrez)
+        // Validar movimiento básico
         if (!this.isValidMove(from, to, piece)) {
             return { success: false, reason: 'Invalid move' };
         }
 
-        // Realizar el movimiento
+        // Simular el movimiento para verificar si deja al rey en jaque
+        const capturedPiece = this.board[to.row][to.col];
         this.board[to.row][to.col] = piece;
         this.board[from.row][from.col] = '.';
+
+        const inCheck = this.isKingInCheck(playerColor);
+
+        // Deshacer el movimiento
+        this.board[from.row][from.col] = piece;
+        this.board[to.row][to.col] = capturedPiece;
+
+        if (inCheck) {
+            return { success: false, reason: 'Move leaves king in check' };
+        }
+
+        // Realizar el movimiento real
+        const moveResult = this.executeMoveWithSpecialRules(from, to, piece, promotion);
 
         // Actualizar tiempo
         if (this.lastMoveTime) {
             const elapsed = Date.now() - this.lastMoveTime;
             if (this.currentTurn === 'white') {
                 this.whiteTime -= elapsed;
-                this.whiteTime += this.timeControl.increment * 1000; // añadir incremento
+                this.whiteTime += this.timeControl.increment * 1000;
             } else {
                 this.blackTime -= elapsed;
                 this.blackTime += this.timeControl.increment * 1000;
@@ -97,23 +118,105 @@ class Game {
         // Cambiar turno
         this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
 
+        // Verificar jaque mate o tablas
+        const opponentColor = this.currentTurn;
+        const isCheck = this.isKingInCheck(opponentColor);
+        const hasLegalMoves = this.hasLegalMoves(opponentColor);
+
+        let gameStatus = null;
+        if (!hasLegalMoves) {
+            if (isCheck) {
+                // Jaque mate
+                this.endGame(playerColor, 'checkmate');
+                gameStatus = { winner: playerColor, reason: 'checkmate' };
+            } else {
+                // Tablas por ahogado
+                this.endGame(null, 'stalemate');
+                gameStatus = { winner: null, reason: 'stalemate' };
+            }
+        }
+
         // Guardar en historial
         this.moveHistory.push({ from, to, piece, timestamp: Date.now() });
+        this.lastMove = { from, to, piece };
 
         return {
             success: true,
             board: this.board,
             currentTurn: this.currentTurn,
             whiteTime: this.whiteTime,
-            blackTime: this.blackTime
+            blackTime: this.blackTime,
+            isCheck: !gameStatus && this.isKingInCheck(this.currentTurn),
+            gameStatus
         };
     }
 
+    executeMoveWithSpecialRules(from, to, piece, promotion) {
+        const pieceType = piece.toLowerCase();
+
+        // Enroque
+        if (pieceType === 'k') {
+            const colDiff = to.col - from.col;
+            if (Math.abs(colDiff) === 2) {
+                // Mover el rey
+                this.board[to.row][to.col] = piece;
+                this.board[from.row][from.col] = '.';
+
+                // Mover la torre
+                if (colDiff === 2) { // Enroque corto
+                    this.board[to.row][5] = this.board[to.row][7];
+                    this.board[to.row][7] = '.';
+                } else { // Enroque largo
+                    this.board[to.row][3] = this.board[to.row][0];
+                    this.board[to.row][0] = '.';
+                }
+
+                if (piece === 'K') this.whiteKingMoved = true;
+                else this.blackKingMoved = true;
+
+                return;
+            }
+
+            if (piece === 'K') this.whiteKingMoved = true;
+            else this.blackKingMoved = true;
+        }
+
+        // Captura al paso
+        if (pieceType === 'p') {
+            const colDiff = Math.abs(to.col - from.col);
+            if (colDiff === 1 && this.board[to.row][to.col] === '.') {
+                // Es captura al paso
+                const capturedPawnRow = piece === 'P' ? to.row + 1 : to.row - 1;
+                this.board[capturedPawnRow][to.col] = '.';
+            }
+
+            // Promoción de peón
+            const promotionRow = piece === 'P' ? 0 : 7;
+            if (to.row === promotionRow) {
+                this.board[to.row][to.col] = piece === 'P' ? promotion.toUpperCase() : promotion.toLowerCase();
+                this.board[from.row][from.col] = '.';
+                return;
+            }
+        }
+
+        // Actualizar banderas de torres
+        if (piece === 'R' && from.row === 7) {
+            if (from.col === 0) this.whiteRookQueensideMoved = true;
+            if (from.col === 7) this.whiteRookKingsideMoved = true;
+        }
+        if (piece === 'r' && from.row === 0) {
+            if (from.col === 0) this.blackRookQueensideMoved = true;
+            if (from.col === 7) this.blackRookKingsideMoved = true;
+        }
+
+        // Movimiento normal
+        this.board[to.row][to.col] = piece;
+        this.board[from.row][from.col] = '.';
+    }
+
     isValidMove(from, to, piece) {
-        // Validación básica: no puede moverse a la misma posición
         if (from.row === to.row && from.col === to.col) return false;
 
-        // No puede capturar su propia pieza
         const targetPiece = this.board[to.row][to.col];
         if (targetPiece !== '.') {
             const isPieceWhite = piece === piece.toUpperCase();
@@ -121,7 +224,6 @@ class Game {
             if (isPieceWhite === isTargetWhite) return false;
         }
 
-        // Validación básica de movimientos por pieza
         const pieceType = piece.toLowerCase();
         switch (pieceType) {
             case 'p': return this.isValidPawnMove(from, to, piece);
@@ -129,7 +231,7 @@ class Game {
             case 'n': return this.isValidKnightMove(from, to);
             case 'b': return this.isValidBishopMove(from, to);
             case 'q': return this.isValidQueenMove(from, to);
-            case 'k': return this.isValidKingMove(from, to);
+            case 'k': return this.isValidKingMove(from, to, piece);
             default: return false;
         }
     }
@@ -148,8 +250,19 @@ class Game {
         }
 
         // Captura diagonal
-        if (colDiff === 1 && rowDiff === direction && this.board[to.row][to.col] !== '.') {
-            return true;
+        if (colDiff === 1 && rowDiff === direction) {
+            if (this.board[to.row][to.col] !== '.') return true;
+
+            // Captura al paso
+            if (this.lastMove && this.lastMove.piece.toLowerCase() === 'p') {
+                const lastMoveRowDiff = Math.abs(this.lastMove.to.row - this.lastMove.from.row);
+                if (lastMoveRowDiff === 2 && this.lastMove.to.col === to.col) {
+                    const expectedRow = piece === 'P' ? 3 : 4;
+                    if (from.row === expectedRow && this.lastMove.to.row === from.row) {
+                        return true;
+                    }
+                }
+            }
         }
 
         return false;
@@ -175,10 +288,67 @@ class Game {
         return this.isValidRookMove(from, to) || this.isValidBishopMove(from, to);
     }
 
-    isValidKingMove(from, to) {
+    isValidKingMove(from, to, piece) {
         const rowDiff = Math.abs(to.row - from.row);
         const colDiff = Math.abs(to.col - from.col);
-        return rowDiff <= 1 && colDiff <= 1;
+
+        // Movimiento normal del rey
+        if (rowDiff <= 1 && colDiff <= 1) return true;
+
+        // Enroque
+        if (rowDiff === 0 && colDiff === 2) {
+            return this.canCastle(from, to, piece);
+        }
+
+        return false;
+    }
+
+    canCastle(from, to, piece) {
+        const isWhite = piece === 'K';
+        const row = isWhite ? 7 : 0;
+
+        // Verificar que el rey no se haya movido
+        if ((isWhite && this.whiteKingMoved) || (!isWhite && this.blackKingMoved)) {
+            return false;
+        }
+
+        // Verificar que el rey no esté en jaque
+        if (this.isKingInCheck(isWhite ? 'white' : 'black')) {
+            return false;
+        }
+
+        const colDiff = to.col - from.col;
+
+        if (colDiff === 2) { // Enroque corto
+            if ((isWhite && this.whiteRookKingsideMoved) || (!isWhite && this.blackRookKingsideMoved)) {
+                return false;
+            }
+
+            // Verificar que las casillas estén vacías
+            if (this.board[row][5] !== '.' || this.board[row][6] !== '.') {
+                return false;
+            }
+
+            // Verificar que el rey no pase por jaque
+            return !this.isSquareUnderAttack(row, 5, isWhite ? 'white' : 'black') &&
+                !this.isSquareUnderAttack(row, 6, isWhite ? 'white' : 'black');
+
+        } else if (colDiff === -2) { // Enroque largo
+            if ((isWhite && this.whiteRookQueensideMoved) || (!isWhite && this.blackRookQueensideMoved)) {
+                return false;
+            }
+
+            // Verificar que las casillas estén vacías
+            if (this.board[row][1] !== '.' || this.board[row][2] !== '.' || this.board[row][3] !== '.') {
+                return false;
+            }
+
+            // Verificar que el rey no pase por jaque
+            return !this.isSquareUnderAttack(row, 2, isWhite ? 'white' : 'black') &&
+                !this.isSquareUnderAttack(row, 3, isWhite ? 'white' : 'black');
+        }
+
+        return false;
     }
 
     isPathClear(from, to) {
@@ -196,9 +366,119 @@ class Game {
         return true;
     }
 
+    findKing(color) {
+        const kingPiece = color === 'white' ? 'K' : 'k';
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                if (this.board[row][col] === kingPiece) {
+                    return { row, col };
+                }
+            }
+        }
+        return null;
+    }
+
+    isKingInCheck(color) {
+        const kingPos = this.findKing(color);
+        if (!kingPos) return false;
+        return this.isSquareUnderAttack(kingPos.row, kingPos.col, color);
+    }
+
+    isSquareUnderAttack(row, col, defenderColor) {
+        const isDefenderWhite = defenderColor === 'white';
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = this.board[r][c];
+                if (piece === '.') continue;
+
+                const isPieceWhite = piece === piece.toUpperCase();
+                if (isPieceWhite === isDefenderWhite) continue;
+
+                // Verificar si esta pieza puede atacar la casilla
+                if (this.canPieceAttackSquare(r, c, row, col, piece)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    canPieceAttackSquare(fromRow, fromCol, toRow, toCol, piece) {
+        const pieceType = piece.toLowerCase();
+        const from = { row: fromRow, col: fromCol };
+        const to = { row: toRow, col: toCol };
+
+        switch (pieceType) {
+            case 'p':
+                return this.canPawnAttack(from, to, piece);
+            case 'n':
+                return this.isValidKnightMove(from, to);
+            case 'b':
+                return this.isValidBishopMove(from, to);
+            case 'r':
+                return this.isValidRookMove(from, to);
+            case 'q':
+                return this.isValidQueenMove(from, to);
+            case 'k':
+                const rowDiff = Math.abs(to.row - from.row);
+                const colDiff = Math.abs(to.col - from.col);
+                return rowDiff <= 1 && colDiff <= 1;
+        }
+
+        return false;
+    }
+
+    canPawnAttack(from, to, piece) {
+        const direction = piece === piece.toUpperCase() ? -1 : 1;
+        const rowDiff = to.row - from.row;
+        const colDiff = Math.abs(to.col - from.col);
+        return colDiff === 1 && rowDiff === direction;
+    }
+
+    hasLegalMoves(color) {
+        const isWhite = color === 'white';
+
+        for (let fromRow = 0; fromRow < 8; fromRow++) {
+            for (let fromCol = 0; fromCol < 8; fromCol++) {
+                const piece = this.board[fromRow][fromCol];
+                if (piece === '.') continue;
+
+                const isPieceWhite = piece === piece.toUpperCase();
+                if (isPieceWhite !== isWhite) continue;
+
+                // Probar todos los movimientos posibles
+                for (let toRow = 0; toRow < 8; toRow++) {
+                    for (let toCol = 0; toCol < 8; toCol++) {
+                        if (!this.isValidMove({ row: fromRow, col: fromCol }, { row: toRow, col: toCol }, piece)) {
+                            continue;
+                        }
+
+                        // Simular el movimiento
+                        const capturedPiece = this.board[toRow][toCol];
+                        this.board[toRow][toCol] = piece;
+                        this.board[fromRow][fromCol] = '.';
+
+                        const inCheck = this.isKingInCheck(color);
+
+                        // Deshacer
+                        this.board[fromRow][fromCol] = piece;
+                        this.board[toRow][toCol] = capturedPiece;
+
+                        if (!inCheck) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     startTimer(io) {
         if (this.timerInterval) return;
-
         this.lastMoveTime = Date.now();
 
         this.timerInterval = setInterval(() => {
@@ -206,8 +486,6 @@ class Game {
                 clearInterval(this.timerInterval);
                 return;
             }
-
-            const elapsed = Date.now() - this.lastMoveTime;
 
             if (this.currentTurn === 'white') {
                 this.whiteTime -= 100;
@@ -297,7 +575,7 @@ io.on('connection', (socket) => {
         console.log(`Jugador unido a partida: ${gameId}`);
     });
 
-    socket.on('makeMove', ({ gameId, from, to }) => {
+    socket.on('makeMove', ({ gameId, from, to, promotion }) => {
         const game = games.get(gameId);
 
         if (!game) {
@@ -305,7 +583,7 @@ io.on('connection', (socket) => {
             return;
         }
 
-        const result = game.makeMove(from, to, socket.id);
+        const result = game.makeMove(from, to, socket.id, promotion);
 
         if (result.success) {
             io.to(gameId).emit('moveMade', {
@@ -314,8 +592,13 @@ io.on('connection', (socket) => {
                 to,
                 currentTurn: result.currentTurn,
                 whiteTime: result.whiteTime,
-                blackTime: result.blackTime
+                blackTime: result.blackTime,
+                isCheck: result.isCheck
             });
+
+            if (result.gameStatus) {
+                io.to(gameId).emit('gameOver', result.gameStatus);
+            }
         } else {
             socket.emit('invalidMove', { reason: result.reason });
         }
@@ -324,7 +607,6 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log('Usuario desconectado:', socket.id);
 
-        // Buscar y eliminar juegos del jugador desconectado
         games.forEach((game, gameId) => {
             if (game.players.some(p => p.socketId === socket.id)) {
                 io.to(gameId).emit('playerDisconnected');

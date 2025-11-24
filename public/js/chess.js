@@ -133,14 +133,14 @@ socket.on('gameStart', ({ board, currentTurn, whiteTime, blackTime }) => {
     console.log('¡Juego iniciado!');
 });
 
-socket.on('moveMade', ({ board, from, to, currentTurn, whiteTime, blackTime }) => {
+socket.on('moveMade', ({ board, from, to, currentTurn, whiteTime, blackTime, isCheck }) => {
     gameState.board = board;
     gameState.currentTurn = currentTurn;
     gameState.whiteTime = whiteTime;
     gameState.blackTime = blackTime;
 
     updateBoard(board);
-    updateTurnIndicator(currentTurn);
+    updateTurnIndicator(currentTurn, isCheck);
     clearSelection();
 
     // Actualizar indicador de turno activo
@@ -148,6 +148,8 @@ socket.on('moveMade', ({ board, from, to, currentTurn, whiteTime, blackTime }) =
 });
 
 socket.on('timeUpdate', ({ whiteTime, blackTime }) => {
+    gameState.whiteTime = whiteTime;
+    gameState.blackTime = blackTime;
     updateTimer('white', whiteTime);
     updateTimer('black', blackTime);
 });
@@ -181,9 +183,18 @@ function showScreen(screenName) {
     if (screenName === 'gameOver') gameOverScreen.classList.add('active');
 }
 
-function updateTurnIndicator(turn) {
+function updateTurnIndicator(turn, isCheck = false) {
     const turnText = turn === 'white' ? 'Blancas' : 'Negras';
-    turnIndicator.textContent = `Turno de las ${turnText}`;
+    const checkText = isCheck ? ' - ¡JAQUE!' : '';
+    turnIndicator.textContent = `Turno de las ${turnText}${checkText}`;
+
+    if (isCheck) {
+        turnIndicator.style.color = '#f56565';
+        turnIndicator.style.fontWeight = 'bold';
+    } else {
+        turnIndicator.style.color = '#555';
+        turnIndicator.style.fontWeight = '600';
+    }
 
     updateActivePlayer(turn);
 }
@@ -213,10 +224,14 @@ function updateActivePlayer(turn) {
 function showGameOver(winner, reason) {
     let message = '';
 
-    if (reason === 'timeout') {
+    if (reason === 'checkmate') {
+        message = `¡JAQUE MATE! ${winner === 'white' ? 'Blancas' : 'Negras'} ganan`;
+    } else if (reason === 'timeout') {
         message = `¡${winner === 'white' ? 'Blancas' : 'Negras'} ganan por tiempo!`;
     } else if (reason === 'resign') {
         message = `¡${winner === 'white' ? 'Blancas' : 'Negras'} ganan por rendición!`;
+    } else if (reason === 'stalemate') {
+        message = '¡Tablas por ahogado!';
     } else {
         message = `¡${winner === 'white' ? 'Blancas' : 'Negras'} ganan!`;
     }

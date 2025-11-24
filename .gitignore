@@ -9,3 +9,6 @@ workspace.xml
 httpRequests/
 dataSources/
 dataSources.local.xml
+
+coverage/*
+!coverage/lcov.info
